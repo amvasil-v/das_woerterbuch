@@ -1,1 +1,1 @@
-# das_woerterbuch
+# das Wörterbuch
