@@ -2,9 +2,9 @@ use crate::words::*;
 use std::io;
 use colored::Colorize;
 
-pub fn exercise_translate_to_de(noun: &Noun) -> Option<bool>
+pub fn exercise_translate_to_de(word: &impl Word) -> Option<bool>
 {
-    println!("Translate to German: {} (noun)", noun.translation);
+    println!("Translate to German: {} ({})", word.translation(), word.pos_str());
     let mut answer = String::new();
     io::stdin()
         .read_line(&mut answer)
@@ -13,12 +13,12 @@ pub fn exercise_translate_to_de(noun: &Noun) -> Option<bool>
     if answer == "exit" || answer == "quit" {
         return None;
     }
-    let res = noun.check_spelling(&answer);
+    let res = word.check_spelling(&answer);
 
     if res {
-        println!("{}", "Correct!".bold().green());
+        println!("{} {}", "Correct!".bold().green(), word.spelling());
     } else {
-        println!("{} The word is {}", "Incorrect!".bold().red(), noun.to_string());
+        println!("{} The word is {}", "Incorrect!".bold().red(), word.spelling());
     }
     println!();
 
