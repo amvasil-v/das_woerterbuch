@@ -1,27 +1,11 @@
-use std::{fmt::Error, ops::Index};
+mod words;
+mod game;
+
+use crate::words::*;
+use crate::game::*;
+use rand::Rng;
 
 use calamine::{open_workbook, Reader, Xlsx};
-
-#[derive(Debug)]
-enum NounArticle {
-    Der,
-    Das,
-    Die,
-    Plural
-}
-
-#[derive(Debug)]
-struct Noun {
-    word: String,
-    article: NounArticle,
-    group_id: usize,
-    translation: String
-}
-
-struct Database {
-    groups: Vec<String>,
-    nouns: Vec<Noun>,
-}
 
 fn get_article(s: &str) -> Result<NounArticle, String> {
     Ok(match s {
@@ -33,8 +17,8 @@ fn get_article(s: &str) -> Result<NounArticle, String> {
     })
 }
 
-fn main() {
-    let mut excel: Xlsx<_> = open_workbook("woerterbuch.xlsx").unwrap();
+fn fill_database(filename: &str) -> Database {
+    let mut excel: Xlsx<_> = open_workbook(filename).unwrap();
     let r = excel.worksheet_range("Words").unwrap().unwrap();
 
     let word_idx = 0;
@@ -72,7 +56,21 @@ fn main() {
         }
     }
 
-    for w in db.nouns {
-        println!("Noun {:?}", w)
+    db
+}
+
+fn main() {
+    let db = fill_database("woerterbuch.xlsx");
+    let mut rng = rand::thread_rng();
+
+    println!("Type \"exit\" to quit game\n");
+    loop {
+        let idx = rng.gen_range(0..db.nouns.len());
+        let noun = &db.nouns[idx];
+        let result = exercise_translate_to_de(noun);
+        match result {
+            None => break,
+            _ => continue,
+        }
     }
 }
