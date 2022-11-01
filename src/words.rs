@@ -31,6 +31,8 @@ pub trait Word {
             false
         }
     }
+
+    fn get_word(&self) -> &str;
 }
 
 #[derive(Debug)]
@@ -76,6 +78,10 @@ impl Word for Noun {
     fn translation(&self) -> &str {
         &self.translation
     }
+
+    fn get_word(&self) -> &str {
+        &self.word
+    }
 }
 
 #[derive(Debug)]
@@ -96,6 +102,10 @@ impl Word for Verb {
 
     fn translation(&self) -> &str {
         &self.translation
+    }
+
+    fn get_word(&self) -> &str {
+        &self.word
     }
 }
 

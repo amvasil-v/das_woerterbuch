@@ -13,8 +13,10 @@ fn main() {
     let mut rng = rand::thread_rng();
     let mut game = Game::new();
 
-    println!("Type \"exit\" or press Ctrl-C to quit game\n");
+    println!("Type \"exit\" or press Ctrl-C to quit game");
+    game.load_results("exercises.bin");
     let mut pos = PartOfSpeech::iter();
+    println!();
     loop {
         let part_of_speech = match pos.next() {
             Some(p) => p,
@@ -40,4 +42,6 @@ fn main() {
             break;
         }
     }
+    game.save_results();
+    println!("Quit dictionary game");
 }
