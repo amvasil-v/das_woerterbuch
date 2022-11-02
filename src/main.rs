@@ -16,6 +16,7 @@ fn main() {
     println!("Type \"exit\" or press Ctrl-C to quit game");
     game.load_results("exercises.bin");
     game.update_result_with_db();
+    game.update_weights();
     println!();
     loop {
         let result = game.exercise_translate_to_de(&mut game_reader);

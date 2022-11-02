@@ -1,9 +1,10 @@
 use crate::{game_reader::GameReader, words::*};
 use bincode;
 use colored::Colorize;
-use rand::{rngs::ThreadRng, Rng};
+use rand::prelude::*;
+use rand::{distributions::WeightedIndex, rngs::ThreadRng};
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, vec};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ExerciseResults {
@@ -29,7 +30,7 @@ impl ExerciseResults {
         Self {
             correct: 0,
             wrong: 0,
-            word: s.to_owned()
+            word: s.to_owned(),
         }
     }
 }
@@ -48,18 +49,19 @@ impl PartialOrd for ExerciseResults {
 
 impl PartialEq for ExerciseResults {
     fn eq(&self, other: &Self) -> bool {
-        self.score() == other.score() && self.word == other.word
+        self.word == other.word
     }
 }
 
-impl Eq for ExerciseResults { }
-
+impl Eq for ExerciseResults {}
 
 pub struct Game {
     results: Vec<ExerciseResults>,
     results_filename: String,
     db: Database,
     rng: ThreadRng,
+    weights: Vec<f32>,
+    rand_dist: Option<WeightedIndex<f32>>,
 }
 
 impl Game {
@@ -69,6 +71,8 @@ impl Game {
             results_filename: String::new(),
             db,
             rng: rand::thread_rng(),
+            weights: vec![],
+            rand_dist: None,
         }
     }
 
@@ -94,7 +98,7 @@ impl Game {
     }
 
     pub fn exercise_translate_to_de(&mut self, reader: &mut GameReader) -> Option<bool> {
-        let idx = self.rng.gen_range(0..self.results.len());
+        let idx = self.select_word_to_learn();
         let exercise_result = &mut self.results[idx];
         let word = self.db.words.get(&exercise_result.word).unwrap().as_ref();
         println!(
@@ -139,5 +143,23 @@ impl Game {
             .take(n)
             .map(|r| r.word.to_owned())
             .collect()
+    }
+
+    pub fn select_word_to_learn(&mut self) -> usize {
+        let dist = self.rand_dist.as_mut().unwrap();
+        dist.sample(&mut self.rng)
+    }
+
+    pub fn update_weights(&mut self) {
+        self.weights.clear();
+        self.results.sort_unstable();
+        let max_score = self.results.last().unwrap().score();
+        let min_score = self.results.first().unwrap().score();
+        self.weights.extend(
+            self.results
+                .iter()
+                .map(|ex| (2 * max_score - min_score - ex.score() + 1) as f32),
+        );
+        self.rand_dist = Some(WeightedIndex::new(&self.weights).unwrap());
     }
 }
