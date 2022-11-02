@@ -148,7 +148,7 @@ impl Word for Noun {
     }
 
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
-        Noun {
+        Self {
             common: WordCommon::new(map, db),
             article: get_article(&map.remove(&ARTICLE_IDX).unwrap()).unwrap()
         }
@@ -168,7 +168,7 @@ impl Word for Verb {
     }
 
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
-        Verb {
+        Self {
             common: WordCommon::new(map, db)
         }
     }
@@ -198,7 +198,7 @@ impl Word for Adjective {
     }
 
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
-        Adjective {
+        Self {
             common: WordCommon::new(map, db)
         }
     }
@@ -227,7 +227,7 @@ impl Word for Adverb {
     }
 
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
-        Adverb {
+        Self {
             common: WordCommon::new(map, db)
         }
     }
@@ -245,6 +245,34 @@ impl Word for Adverb {
     }
 }
 
+#[derive(Debug)]
+pub struct Preposition {
+    pub common: WordCommon,
+}
+
+impl Word for Preposition {
+    fn pos_str(&self) -> &'static str {
+        "preposition"
+    }
+
+    fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
+        Self {
+            common: WordCommon::new(map, db)
+        }
+    }
+
+    fn translation(&self) -> &str {
+        self.common.translation()
+    }
+
+    fn get_word(&self) -> &str {
+        self.common.get_word()
+    }
+    
+    fn get_help(&self) -> &str {
+        self.common.get_help()
+    }
+}
 pub struct Database {
     pub groups: Vec<String>,
     pub words: HashMap<String, Box<dyn Word>>,

@@ -23,6 +23,7 @@ pub fn fill_database(filename: &str) -> Database {
             "v" => Box::new(Verb::new(&mut map, &mut db)),
             "adj" => Box::new(Adjective::new(&mut map, &mut db)),
             "adv" => Box::new(Adverb::new(&mut map, &mut db)),
+            "prep" => Box::new(Preposition::new(&mut map, &mut db)),
             _ => continue,
         };
         db.words.insert(word.get_word().to_owned(), word);
