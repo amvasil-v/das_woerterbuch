@@ -7,6 +7,13 @@ use crate::dictionary::*;
 use crate::game::*;
 use crate::game_reader::GameReader;
 
+#[allow(unused)]
+enum ExerciseType {
+    TranslateRuDe,
+    SelectDe
+}
+
+const EXERCISE_TYPE: ExerciseType = ExerciseType::SelectDe;
 
 fn main() {
     let db = fill_database("woerterbuch.xlsx");
@@ -19,7 +26,10 @@ fn main() {
     game.update_weights();
     println!();
     loop {
-        let result = game.exercise_translate_to_de(&mut game_reader);
+        let result = match EXERCISE_TYPE {
+            ExerciseType::TranslateRuDe => game.exercise_translate_to_de(&mut game_reader),
+            ExerciseType::SelectDe => game.exercise_select_de(&mut game_reader)
+        };
 
         if let None = result {
             break;

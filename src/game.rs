@@ -2,10 +2,12 @@ use crate::{game_reader::GameReader, words::*};
 use bincode;
 use colored::Colorize;
 use rand::prelude::*;
-use rand::{distributions::WeightedIndex, rngs::ThreadRng};
+use rand::seq::SliceRandom;
+use rand::{distributions::WeightedIndex};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, vec};
 
+const ANSWER_OPTIONS: usize = 3;
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ExerciseResults {
     word: String,
@@ -59,7 +61,6 @@ pub struct Game {
     results: Vec<ExerciseResults>,
     results_filename: String,
     db: Database,
-    rng: ThreadRng,
     weights: Vec<f32>,
     rand_dist: Option<WeightedIndex<f32>>,
 }
@@ -70,7 +71,6 @@ impl Game {
             results: vec![],
             results_filename: String::new(),
             db,
-            rng: rand::thread_rng(),
             weights: vec![],
             rand_dist: None,
         }
@@ -150,9 +150,10 @@ impl Game {
             .collect()
     }
 
-    pub fn select_word_to_learn(&mut self) -> usize {
-        let dist = self.rand_dist.as_mut().unwrap();
-        dist.sample(&mut self.rng)
+    pub fn select_word_to_learn(&self) -> usize {
+        let mut rng = rand::thread_rng();
+        let dist = self.rand_dist.as_ref().unwrap();
+        dist.sample(&mut rng)
     }
 
     pub fn update_weights(&mut self) {
@@ -166,5 +167,85 @@ impl Game {
                 .map(|ex| (2 * max_score - min_score - ex.score() + 1) as f32),
         );
         self.rand_dist = Some(WeightedIndex::new(&self.weights).unwrap());
+    }
+
+    /*pub fn fetch_word_options(&self, word: &dyn Word) -> Vec<String> {
+        let group_id = word.get_group_id();
+        let pos = word.get_pos();
+        let options: Vec<_> = self
+            .db
+            .words
+            .iter()
+            .filter_map(|(_, w)| {
+                if w.get_group_id() == group_id && w.get_pos() == pos {
+                    Some(w)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        options
+            .choose_multiple(&mut rand::thread_rng(), ANSWER_OPTIONS)
+            .map(|s| s.get_word().to_owned())
+            .collect()
+    }*/
+
+    pub fn exercise_select_de(&mut self, reader: &mut GameReader) -> Option<bool> {
+        let idx = self.select_word_to_learn();
+        let exercise_result = &mut self.results[idx];
+        let word = self.db.words.get(&exercise_result.word).unwrap().as_ref();
+
+        let group_id = word.get_group_id();
+        let pos = word.get_pos();
+        let candidates: Vec<_> = self
+            .db
+            .words
+            .iter()
+            .filter_map(|(_, w)| {
+                if w.get_group_id() == group_id && w.get_pos() == pos {
+                    Some(w)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let mut options: Vec<String> = candidates
+            .choose_multiple(&mut rand::thread_rng(), ANSWER_OPTIONS)
+            .map(|s| s.get_word().to_owned())
+            .collect();
+
+        options.push(word.get_word().to_owned());
+
+        println!("Select translation to deutsch: {} ({})", word.translation(), word.pos_str());
+        for (i, option) in options.iter().enumerate() {
+            println!("{}) {}", i + 1, self.db.words[option].spelling());
+        }
+        let select: usize = match reader.read_line()?.parse() {
+            Err(_) => return Some(false),
+            Ok(v) => v
+        };
+
+        let result = if select < 1 || select > options.len() {
+            false
+        } else if options[select - 1] == word.get_word() {
+            true
+        } else {
+            false
+        };
+
+        if result {
+            println!("{}", "Correct!".bold().green());
+            true
+        } else {
+            println!(
+                "{} The word is {}",
+                "Incorrect!".bold().red(),
+                word.spelling()
+            );
+            false
+        };
+        println!();
+        exercise_result.add(result);
+        Some(result)
     }
 }

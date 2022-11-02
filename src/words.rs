@@ -6,6 +6,9 @@ use strum_macros::EnumIter;
 pub enum PartOfSpeech {
     Noun,
     Verb,
+    Adjective,
+    Adverb,
+    Preposition
 }
 
 fn umlaut_normalize(word: &str) -> String {
@@ -43,6 +46,10 @@ pub trait Word {
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self where Self:Sized;
 
     fn get_help(&self) -> &str;
+
+    fn get_group_id(&self) -> usize;
+
+    fn get_pos(&self) -> PartOfSpeech;
 }
 
 #[derive(Debug)]
@@ -105,6 +112,14 @@ impl Word for WordCommon {
     fn get_help(&self) -> &str {
         &self.help
     }
+
+    fn get_group_id(&self) -> usize {
+        self.group_id
+    }
+
+    fn get_pos(&self) -> PartOfSpeech {
+        unimplemented!()
+    }
 }
 
 fn get_article(s: &str) -> Result<NounArticle, String> {
@@ -154,7 +169,13 @@ impl Word for Noun {
         }
     }
 
-    
+    fn get_group_id(&self) -> usize {
+        self.common.get_group_id()
+    }
+
+    fn get_pos(&self) -> PartOfSpeech {
+        PartOfSpeech::Noun
+    }    
 }
 
 #[derive(Debug)]
@@ -183,6 +204,14 @@ impl Word for Verb {
     
     fn get_help(&self) -> &str {
         self.common.get_help()
+    }
+
+    fn get_group_id(&self) -> usize {
+        self.common.get_group_id()
+    }
+
+    fn get_pos(&self) -> PartOfSpeech {
+        PartOfSpeech::Verb
     }
 
 }
@@ -214,6 +243,14 @@ impl Word for Adjective {
     fn get_help(&self) -> &str {
         self.common.get_help()
     }
+
+    fn get_group_id(&self) -> usize {
+        self.common.get_group_id()
+    }
+
+    fn get_pos(&self) -> PartOfSpeech {
+        PartOfSpeech::Adjective
+    }
 }
 
 #[derive(Debug)]
@@ -243,6 +280,14 @@ impl Word for Adverb {
     fn get_help(&self) -> &str {
         self.common.get_help()
     }
+
+    fn get_group_id(&self) -> usize {
+        self.common.get_group_id()
+    }
+
+    fn get_pos(&self) -> PartOfSpeech {
+        PartOfSpeech::Adverb
+    }
 }
 
 #[derive(Debug)]
@@ -271,6 +316,14 @@ impl Word for Preposition {
     
     fn get_help(&self) -> &str {
         self.common.get_help()
+    }
+
+    fn get_group_id(&self) -> usize {
+        self.common.get_group_id()
+    }
+
+    fn get_pos(&self) -> PartOfSpeech {
+        PartOfSpeech::Preposition
     }
 }
 pub struct Database {
