@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, Copy, EnumIter, PartialEq)]
@@ -111,6 +113,5 @@ impl Word for Verb {
 
 pub struct Database {
     pub groups: Vec<String>,
-    pub nouns: Vec<Noun>,
-    pub verbs: Vec<Verb>,
+    pub words: HashMap<String, Box<dyn Word>>
 }

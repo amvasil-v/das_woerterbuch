@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::words::*;
 use calamine::{open_workbook, Reader, Xlsx};
 
@@ -23,8 +25,7 @@ pub fn fill_database(filename: &str) -> Database {
 
     let mut db = Database {
         groups: vec![],
-        nouns: vec![],
-        verbs: vec![],
+        words: HashMap::new()
     };
     for row in r.rows().skip(2) {
         let word = row[word_idx].get_string().unwrap();
@@ -47,14 +48,14 @@ pub fn fill_database(filename: &str) -> Database {
                 group_id,
                 translation: trans.to_owned(),
             };
-            db.nouns.push(noun);
+            db.words.insert(word.to_owned(), Box::new(noun));
         } else if pos == "v" {
             let verb = Verb {
                 word: word.to_owned(),
                 group_id,
                 translation: trans.to_owned(),
             };
-            db.verbs.push(verb);
+            db.words.insert(word.to_owned(), Box::new(verb));
         }
     }
 
