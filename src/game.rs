@@ -101,11 +101,16 @@ impl Game {
         let idx = self.select_word_to_learn();
         let exercise_result = &mut self.results[idx];
         let word = self.db.words.get(&exercise_result.word).unwrap().as_ref();
-        println!(
+        print!(
             "Translate to German: {} ({})",
             word.translation(),
             word.pos_str()
         );
+        let help = word.get_help();
+        if !help.is_empty() {
+            print!(" Help: {}", help);
+        }
+        println!();
         let answer = match reader.read_line() {
             None => return None,
             Some(s) => s,

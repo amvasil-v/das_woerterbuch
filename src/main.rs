@@ -24,6 +24,8 @@ fn main() {
         if let None = result {
             break;
         }
+
+        game.update_weights();
     }
     game.save_results();
     println!("Top words to learn are {:?}", game.get_top_words(5));
