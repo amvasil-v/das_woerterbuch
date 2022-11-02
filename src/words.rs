@@ -16,11 +16,15 @@ fn umlaut_normalize(word: &str) -> String {
 }
 
 pub trait Word {
-    fn pos_str(&self) -> &'static str;
+    fn pos_str(&self) -> &'static str {
+        unimplemented!()
+    }
 
     fn translation(&self) -> &str;
 
-    fn spelling(&self) -> String;
+    fn spelling(&self) -> String {
+        self.get_word().to_owned()
+    }
 
     fn check_spelling(&self, answer: &str) -> bool {
         let low_ans = answer.to_lowercase();
@@ -80,14 +84,26 @@ pub fn get_part_of_speech(map: &HashMap<usize, String>) -> &str {
     return &map[&POS_IDX];
 }
 
-impl WordCommon {
-    pub fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
+impl Word for WordCommon {
+    fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
         Self {
             word: map.remove(&WORD_IDX).unwrap(),
             group_id: db.get_group_id(&map.remove(&GROUP_IDX).unwrap()),
             translation: map.remove(&TRANSLATION_IDX).unwrap(),
             help: map.remove(&HELP_IDX).unwrap(),
         }
+    }
+
+    fn translation(&self) -> &str {
+        &self.translation
+    }
+
+    fn get_word(&self) -> &str {
+        &self.word
+    }
+
+    fn get_help(&self) -> &str {
+        &self.help
     }
 }
 
@@ -120,11 +136,15 @@ impl Word for Noun {
     }
 
     fn translation(&self) -> &str {
-        &self.common.translation
+        self.common.translation()
     }
 
     fn get_word(&self) -> &str {
-        &self.common.word
+        self.common.get_word()
+    }
+
+    fn get_help(&self) -> &str {
+        self.common.get_help()
     }
 
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
@@ -134,9 +154,7 @@ impl Word for Noun {
         }
     }
 
-    fn get_help(&self) -> &str {
-        &&self.common.help
-    }
+    
 }
 
 #[derive(Debug)]
@@ -149,26 +167,81 @@ impl Word for Verb {
         "verb"
     }
 
-    fn spelling(&self) -> String {
-        self.common.word.clone()
-    }
-
-    fn translation(&self) -> &str {
-        &self.common.translation
-    }
-
-    fn get_word(&self) -> &str {
-        &self.common.word
-    }
-
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
         Verb {
             common: WordCommon::new(map, db)
         }
     }
 
+    fn translation(&self) -> &str {
+        self.common.translation()
+    }
+
+    fn get_word(&self) -> &str {
+        self.common.get_word()
+    }
+    
     fn get_help(&self) -> &str {
-        &&self.common.help
+        self.common.get_help()
+    }
+
+}
+
+#[derive(Debug)]
+pub struct Adjective {
+    pub common: WordCommon,
+}
+
+impl Word for Adjective {
+    fn pos_str(&self) -> &'static str {
+        "adj"
+    }
+
+    fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
+        Adjective {
+            common: WordCommon::new(map, db)
+        }
+    }
+
+    fn translation(&self) -> &str {
+        self.common.translation()
+    }
+
+    fn get_word(&self) -> &str {
+        self.common.get_word()
+    }
+    
+    fn get_help(&self) -> &str {
+        self.common.get_help()
+    }
+}
+
+#[derive(Debug)]
+pub struct Adverb {
+    pub common: WordCommon,
+}
+
+impl Word for Adverb {
+    fn pos_str(&self) -> &'static str {
+        "adv"
+    }
+
+    fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
+        Adverb {
+            common: WordCommon::new(map, db)
+        }
+    }
+
+    fn translation(&self) -> &str {
+        self.common.translation()
+    }
+
+    fn get_word(&self) -> &str {
+        self.common.get_word()
+    }
+    
+    fn get_help(&self) -> &str {
+        self.common.get_help()
     }
 }
 
