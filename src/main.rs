@@ -17,27 +17,28 @@ const EXERCISE_TYPE: ExerciseType = ExerciseType::SelectDe;
 
 fn main() {
     let db = fill_database("woerterbuch.xlsx");
-    let mut game = Game::new(db);
     let mut game_reader = GameReader::new();
+    let mut results = GameResults::new();
+    results.load_results("exercises.bin");
+    results.update_with_db(&db);
+    results.update_weights();
+    let mut game = Game::new(db);
 
     println!("Type \"exit\" or press Ctrl-C to quit game");
-    game.load_results("exercises.bin");
-    game.update_result_with_db();
-    game.update_weights();
     println!();
     loop {
         let result = match EXERCISE_TYPE {
-            ExerciseType::TranslateRuDe => game.exercise_translate_to_de(&mut game_reader),
-            ExerciseType::SelectDe => game.exercise_select_de(&mut game_reader)
+            ExerciseType::TranslateRuDe => game.exercise_translate_to_de(&mut game_reader, &mut results),
+            ExerciseType::SelectDe => game.exercise_select_de(&mut game_reader, &mut results)
         };
 
         if let None = result {
             break;
         }
 
-        game.update_weights();
+        results.update_weights();
     }
-    game.save_results();
-    println!("Top words to learn are {:?}", game.get_top_words(5));
+    results.save_results();
+    println!("Top words to learn are {:?}", results.get_top_words(5));
     println!("Quit dictionary game");
 }

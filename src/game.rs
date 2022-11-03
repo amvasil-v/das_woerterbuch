@@ -2,7 +2,6 @@ use crate::{game_reader::GameReader, words::*};
 use bincode;
 use colored::Colorize;
 use rand::prelude::*;
-use rand::seq::SliceRandom;
 use rand::{distributions::WeightedIndex};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, vec};
@@ -58,19 +57,21 @@ impl PartialEq for ExerciseResults {
 impl Eq for ExerciseResults {}
 
 pub struct Game {
+    db: Database,
+}
+
+pub struct GameResults {
     results: Vec<ExerciseResults>,
     results_filename: String,
-    db: Database,
     weights: Vec<f32>,
     rand_dist: Option<WeightedIndex<f32>>,
 }
 
-impl Game {
-    pub fn new(db: Database) -> Self {
-        Game {
+impl GameResults {
+    pub fn new() -> Self {
+        GameResults {
             results: vec![],
             results_filename: String::new(),
-            db,
             weights: vec![],
             rand_dist: None,
         }
@@ -97,9 +98,53 @@ impl Game {
         bincode::serialize_into(writer, &self.results).unwrap();
     }
 
-    pub fn exercise_translate_to_de(&mut self, reader: &mut GameReader) -> Option<bool> {
-        let idx = self.select_word_to_learn();
-        let exercise_result = &mut self.results[idx];
+    pub fn update_with_db(&mut self, db: &Database) {
+        for word in db.words.keys() {
+            let new_entry = ExerciseResults::new(word);
+            if !self.results.contains(&new_entry) {
+                self.results.push(new_entry);
+            }
+        }
+        self.results.sort_unstable()
+    }
+
+    pub fn get_top_words(&self, n: usize) -> Vec<String> {
+        self.results
+            .iter()
+            .take(n)
+            .map(|r| r.word.to_owned())
+            .collect()
+    }
+
+    pub fn select_word_to_learn(&mut self) -> &mut ExerciseResults {
+        let mut rng = rand::thread_rng();
+        let dist = self.rand_dist.as_ref().unwrap();
+        &mut self.results[dist.sample(&mut rng)]
+    }
+
+    pub fn update_weights(&mut self) {
+        self.weights.clear();
+        self.results.sort_unstable();
+        let max_score = self.results.last().unwrap().score();
+        let min_score = self.results.first().unwrap().score();
+        self.weights.extend(
+            self.results
+                .iter()
+                .map(|ex| (2 * max_score - min_score - ex.score() + 1) as f32),
+        );
+        self.rand_dist = Some(WeightedIndex::new(&self.weights).unwrap());
+    }
+}
+
+impl Game {
+    pub fn new(db: Database) -> Self {
+        Game {
+            db
+        }
+    }   
+
+    pub fn exercise_translate_to_de(&mut self, reader: &mut GameReader, results: &mut GameResults) -> Option<bool> {
+        let exercise_result = results.select_word_to_learn();
         let word = self.db.words.get(&exercise_result.word).unwrap().as_ref();
         print!(
             "Translate to German: {} ({})",
@@ -132,69 +177,7 @@ impl Game {
         Some(res)
     }
 
-    pub fn update_result_with_db(&mut self) {
-        for word in self.db.words.keys() {
-            let new_entry = ExerciseResults::new(word);
-            if !self.results.contains(&new_entry) {
-                self.results.push(new_entry);
-            }
-        }
-        self.results.sort_unstable()
-    }
-
-    pub fn get_top_words(&self, n: usize) -> Vec<String> {
-        self.results
-            .iter()
-            .take(n)
-            .map(|r| r.word.to_owned())
-            .collect()
-    }
-
-    pub fn select_word_to_learn(&self) -> usize {
-        let mut rng = rand::thread_rng();
-        let dist = self.rand_dist.as_ref().unwrap();
-        dist.sample(&mut rng)
-    }
-
-    pub fn update_weights(&mut self) {
-        self.weights.clear();
-        self.results.sort_unstable();
-        let max_score = self.results.last().unwrap().score();
-        let min_score = self.results.first().unwrap().score();
-        self.weights.extend(
-            self.results
-                .iter()
-                .map(|ex| (2 * max_score - min_score - ex.score() + 1) as f32),
-        );
-        self.rand_dist = Some(WeightedIndex::new(&self.weights).unwrap());
-    }
-
-    /*pub fn fetch_word_options(&self, word: &dyn Word) -> Vec<String> {
-        let group_id = word.get_group_id();
-        let pos = word.get_pos();
-        let options: Vec<_> = self
-            .db
-            .words
-            .iter()
-            .filter_map(|(_, w)| {
-                if w.get_group_id() == group_id && w.get_pos() == pos {
-                    Some(w)
-                } else {
-                    None
-                }
-            })
-            .collect();
-        options
-            .choose_multiple(&mut rand::thread_rng(), ANSWER_OPTIONS)
-            .map(|s| s.get_word().to_owned())
-            .collect()
-    }*/
-
-    pub fn exercise_select_de(&mut self, reader: &mut GameReader) -> Option<bool> {
-        let idx = self.select_word_to_learn();
-        let exercise_result = &mut self.results[idx];
-        let word = self.db.words.get(&exercise_result.word).unwrap().as_ref();
-
+    fn fetch_word_options<'a>(&'a self, word: &'a Box<dyn Word>) -> Vec<&'a Box<dyn Word>> {
         let group_id = word.get_group_id();
         let pos = word.get_pos();
         let candidates: Vec<_> = self
@@ -209,16 +192,22 @@ impl Game {
                 }
             })
             .collect();
-        let mut options: Vec<String> = candidates
-            .choose_multiple(&mut rand::thread_rng(), ANSWER_OPTIONS)
-            .map(|s| s.get_word().to_owned())
-            .collect();
+        let mut options: Vec<_> = candidates
+            .into_iter()
+            .choose_multiple(&mut rand::thread_rng(), ANSWER_OPTIONS);
 
-        options.push(word.get_word().to_owned());
+        options.push(&word);
+        options
+    }
+
+    pub fn exercise_select_de(&mut self, reader: &mut GameReader, results: &mut GameResults) -> Option<bool> {
+        let exercise_result = results.select_word_to_learn();
+        let word = self.db.words.get(&exercise_result.word).unwrap();
+        let options = self.fetch_word_options(word);
 
         println!("Select translation to deutsch: {} ({})", word.translation(), word.pos_str());
-        for (i, option) in options.iter().enumerate() {
-            println!("{}) {}", i + 1, self.db.words[option].spelling());
+        for (i, &option) in options.iter().enumerate() {
+            println!("{}) {}", i + 1, self.db.words[option.get_word()].spelling());
         }
         let select: usize = match reader.read_line()?.parse() {
             Err(_) => return Some(false),
@@ -227,7 +216,7 @@ impl Game {
 
         let result = if select < 1 || select > options.len() {
             false
-        } else if options[select - 1] == word.get_word() {
+        } else if options[select - 1].get_word() == word.get_word() {
             true
         } else {
             false
