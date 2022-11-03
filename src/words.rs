@@ -8,7 +8,7 @@ pub enum PartOfSpeech {
     Verb,
     Adjective,
     Adverb,
-    Preposition
+    Preposition,
 }
 
 fn umlaut_normalize(word: &str) -> String {
@@ -43,16 +43,22 @@ pub trait Word {
 
     fn get_word(&self) -> &str;
 
-    fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self where Self:Sized;
+    fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self
+    where
+        Self: Sized;
 
     fn get_help(&self) -> &str;
 
     fn get_group_id(&self) -> usize;
 
     fn get_pos(&self) -> PartOfSpeech;
+
+    fn get_article(&self) -> Option<NounArticle> {
+        None
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, EnumIter, PartialEq, Eq, Clone, Copy)]
 pub enum NounArticle {
     Der,
     Das,
@@ -69,6 +75,13 @@ impl NounArticle {
             Self::Plural => "die",
         }
         .to_owned()
+    }
+
+    pub fn to_answer_buller(&self) -> String {
+        match self {
+            Self::Plural => "die (plural)".to_string(),
+            _ => self.to_string(),
+        }
     }
 }
 
@@ -132,6 +145,11 @@ fn get_article(s: &str) -> Result<NounArticle, String> {
     })
 }
 
+pub fn capitalize_noun(noun: &str) -> String {
+    noun[0..1].to_uppercase().to_string()
+    + &noun[1..]
+}
+
 #[derive(Debug)]
 pub struct Noun {
     pub common: WordCommon,
@@ -146,8 +164,7 @@ impl Word for Noun {
     fn spelling(&self) -> String {
         self.article.to_string()
             + " "
-            + &self.common.word[0..1].to_uppercase().to_string()
-            + &self.common.word[1..]
+            + &capitalize_noun(&self.common.word)
     }
 
     fn translation(&self) -> &str {
@@ -165,7 +182,7 @@ impl Word for Noun {
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
         Self {
             common: WordCommon::new(map, db),
-            article: get_article(&map.remove(&ARTICLE_IDX).unwrap()).unwrap()
+            article: get_article(&map.remove(&ARTICLE_IDX).unwrap()).unwrap(),
         }
     }
 
@@ -175,7 +192,11 @@ impl Word for Noun {
 
     fn get_pos(&self) -> PartOfSpeech {
         PartOfSpeech::Noun
-    }    
+    }
+
+    fn get_article(&self) -> Option<NounArticle> {
+        Some(self.article.clone())
+    }
 }
 
 #[derive(Debug)]
@@ -190,7 +211,7 @@ impl Word for Verb {
 
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
         Self {
-            common: WordCommon::new(map, db)
+            common: WordCommon::new(map, db),
         }
     }
 
@@ -201,7 +222,7 @@ impl Word for Verb {
     fn get_word(&self) -> &str {
         self.common.get_word()
     }
-    
+
     fn get_help(&self) -> &str {
         self.common.get_help()
     }
@@ -213,7 +234,6 @@ impl Word for Verb {
     fn get_pos(&self) -> PartOfSpeech {
         PartOfSpeech::Verb
     }
-
 }
 
 #[derive(Debug)]
@@ -228,7 +248,7 @@ impl Word for Adjective {
 
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
         Self {
-            common: WordCommon::new(map, db)
+            common: WordCommon::new(map, db),
         }
     }
 
@@ -239,7 +259,7 @@ impl Word for Adjective {
     fn get_word(&self) -> &str {
         self.common.get_word()
     }
-    
+
     fn get_help(&self) -> &str {
         self.common.get_help()
     }
@@ -265,7 +285,7 @@ impl Word for Adverb {
 
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
         Self {
-            common: WordCommon::new(map, db)
+            common: WordCommon::new(map, db),
         }
     }
 
@@ -276,7 +296,7 @@ impl Word for Adverb {
     fn get_word(&self) -> &str {
         self.common.get_word()
     }
-    
+
     fn get_help(&self) -> &str {
         self.common.get_help()
     }
@@ -302,7 +322,7 @@ impl Word for Preposition {
 
     fn new(map: &mut HashMap<usize, String>, db: &mut Database) -> Self {
         Self {
-            common: WordCommon::new(map, db)
+            common: WordCommon::new(map, db),
         }
     }
 
@@ -313,7 +333,7 @@ impl Word for Preposition {
     fn get_word(&self) -> &str {
         self.common.get_word()
     }
-    
+
     fn get_help(&self) -> &str {
         self.common.get_help()
     }

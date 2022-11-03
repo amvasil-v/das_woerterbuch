@@ -10,10 +10,11 @@ use crate::game_reader::GameReader;
 #[allow(unused)]
 enum ExerciseType {
     TranslateRuDe,
-    SelectDe
+    SelectDe,
+    GuessNounArticle
 }
 
-const EXERCISE_TYPE: ExerciseType = ExerciseType::SelectDe;
+const EXERCISE_TYPE: ExerciseType = ExerciseType::GuessNounArticle;
 
 fn main() {
     let db = fill_database("woerterbuch.xlsx");
@@ -29,7 +30,8 @@ fn main() {
     loop {
         let result = match EXERCISE_TYPE {
             ExerciseType::TranslateRuDe => game.exercise_translate_to_de(&mut game_reader, &mut results),
-            ExerciseType::SelectDe => game.exercise_select_de(&mut game_reader, &mut results)
+            ExerciseType::SelectDe => game.exercise_select_de(&mut game_reader, &mut results),
+            ExerciseType::GuessNounArticle => game.guess_noun_article(&mut game_reader, &mut results),
         };
 
         if let None = result {

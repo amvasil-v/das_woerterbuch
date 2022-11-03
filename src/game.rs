@@ -1,11 +1,12 @@
 use crate::{game_reader::GameReader, words::*};
 use bincode;
 use colored::Colorize;
+use rand::distributions::WeightedIndex;
 use rand::prelude::*;
-use rand::{distributions::WeightedIndex};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::{cmp::Ordering, vec};
+use strum::IntoEnumIterator;
 
 const ANSWER_OPTIONS: usize = 4;
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -117,10 +118,26 @@ impl GameResults {
             .collect()
     }
 
-    pub fn select_word_to_learn(&mut self) -> &mut ExerciseResults {
+    fn select_word_to_learn(&mut self) -> &mut ExerciseResults {
         let mut rng = rand::thread_rng();
         let dist = self.rand_dist.as_ref().unwrap();
         &mut self.results[dist.sample(&mut rng)]
+    }
+
+    fn select_word_by_pos(&mut self, db: &Database, pos: PartOfSpeech) -> &mut ExerciseResults {
+        let mut rng = rand::thread_rng();
+        let mut weights = vec![];
+        let mut indices = vec![];
+        for (i, &weight) in self.weights.iter().enumerate() {
+            let word = &self.results[i].word;
+            if db.words[word].get_pos() == pos {
+                weights.push(weight);
+                indices.push(i)
+            }
+        }
+        let dist = WeightedIndex::new(weights).unwrap();
+        let idx = dist.sample(&mut rng);
+        &mut self.results[indices[idx]]
     }
 
     pub fn update_weights(&mut self) {
@@ -137,14 +154,22 @@ impl GameResults {
     }
 }
 
+enum UserInput {
+    Answer(usize),
+    InvalidAnswer,
+    Exit,
+}
+
 impl Game {
     pub fn new(db: Database) -> Self {
-        Game {
-            db
-        }
-    }   
+        Game { db }
+    }
 
-    pub fn exercise_translate_to_de(&mut self, reader: &mut GameReader, results: &mut GameResults) -> Option<bool> {
+    pub fn exercise_translate_to_de(
+        &mut self,
+        reader: &mut GameReader,
+        results: &mut GameResults,
+    ) -> Option<bool> {
         let exercise_result = results.select_word_to_learn();
         let word = self.db.words.get(&exercise_result.word).unwrap().as_ref();
         print!(
@@ -215,26 +240,26 @@ impl Game {
         opt_vec
     }
 
-    pub fn exercise_select_de(&mut self, reader: &mut GameReader, results: &mut GameResults) -> Option<bool> {
+    pub fn exercise_select_de(
+        &mut self,
+        reader: &mut GameReader,
+        results: &mut GameResults,
+    ) -> Option<bool> {
         let exercise_result = results.select_word_to_learn();
         let word = self.db.words.get(&exercise_result.word).unwrap();
         let options = self.fetch_word_options(word);
 
-        println!("Select translation to Deutsch: {} ({})", word.translation(), word.pos_str());
-        for (i, &option) in options.iter().enumerate() {
-            println!("{}) {}", i + 1, self.db.words[option.get_word()].spelling());
-        }
-        let select: usize = match reader.read_line()?.parse() {
-            Err(_) => 0,
-            Ok(v) => v
-        };
+        println!(
+            "Select translation to Deutsch: {} ({})",
+            word.translation(),
+            word.pos_str()
+        );
 
-        let result = if select < 1 || select > options.len() {
-            false
-        } else if options[select - 1].get_word() == word.get_word() {
-            true
-        } else {
-            false
+        let bullets: Vec<_> = options.iter().map(|w| w.spelling()).collect();
+        let result = match print_options_and_guess(&bullets, reader) {
+            UserInput::Answer(a) => options[a].get_word() == word.get_word(),
+            UserInput::InvalidAnswer => false,
+            UserInput::Exit => return None,
         };
 
         if result {
@@ -251,5 +276,63 @@ impl Game {
         println!();
         exercise_result.add(result);
         Some(result)
+    }
+
+    pub fn guess_noun_article(
+        &mut self,
+        reader: &mut GameReader,
+        results: &mut GameResults,
+    ) -> Option<bool> {
+        let exercise_result = results.select_word_by_pos(&self.db, PartOfSpeech::Noun);
+        let word = self.db.words.get(&exercise_result.word).unwrap();
+
+        println!(
+            "Select the correct article for the noun: {}",
+            capitalize_noun(word.get_word())
+        );
+        let bullets: Vec<_> = NounArticle::iter().map(|a| a.to_answer_buller()).collect();
+        let result = match print_options_and_guess(&bullets, reader) {
+            UserInput::Answer(a) => NounArticle::iter().nth(a).unwrap() == word.get_article().unwrap(),
+            UserInput::InvalidAnswer => false,
+            UserInput::Exit => return None,
+        };
+
+        if result {
+            print!("{}", "Correct! ".bold().green());
+            true
+        } else {
+            print!(
+                "{} The word is ",
+                "Incorrect!".bold().red()
+            );
+            false
+        };
+        println!("{} - {}", word.spelling(), word.translation());
+        println!();
+        exercise_result.add(result);
+        Some(result)
+    }
+}
+
+fn print_options_and_guess(options: &[String], reader: &mut GameReader) -> UserInput {
+    let mut count = 0usize;
+
+    for (i, option) in options.iter().enumerate() {
+        println!("{}) {}", i + 1, option);
+        count += 1;
+    }
+    let input_str = match reader.read_line() {
+        Some(s) => s,
+        None => return UserInput::Exit,
+    };
+    let select: usize = match input_str.parse() {
+        Err(_) => return UserInput::InvalidAnswer,
+        Ok(v) => v,
+    };
+
+    if select < 1 || select > count {
+        UserInput::InvalidAnswer
+    } else {
+        UserInput::Answer(select - 1)
     }
 }
