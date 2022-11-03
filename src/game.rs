@@ -4,9 +4,10 @@ use colored::Colorize;
 use rand::prelude::*;
 use rand::{distributions::WeightedIndex};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::{cmp::Ordering, vec};
 
-const ANSWER_OPTIONS: usize = 3;
+const ANSWER_OPTIONS: usize = 4;
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ExerciseResults {
     word: String,
@@ -180,6 +181,7 @@ impl Game {
     fn fetch_word_options<'a>(&'a self, word: &'a Box<dyn Word>) -> Vec<&'a Box<dyn Word>> {
         let group_id = word.get_group_id();
         let pos = word.get_pos();
+        let mut rng = rand::thread_rng();
         let candidates: Vec<_> = self
             .db
             .words
@@ -192,12 +194,25 @@ impl Game {
                 }
             })
             .collect();
-        let mut options: Vec<_> = candidates
-            .into_iter()
-            .choose_multiple(&mut rand::thread_rng(), ANSWER_OPTIONS);
 
-        options.push(&word);
-        options
+        let mut options = HashMap::new();
+        options.insert(word.get_word(), word);
+
+        const MAX_ATTEMPTS: usize = 1000;
+        let mut attempts = 0usize;
+        while options.len() < ANSWER_OPTIONS.min(candidates.len()) {
+            let cand = *candidates.choose(&mut rng).unwrap();
+            if let Some(_) = options.insert(cand.get_word(), cand) {
+                attempts += 1;
+                if attempts >= MAX_ATTEMPTS {
+                    panic!("Cannot choose answer options");
+                }
+            }
+        }
+
+        let mut opt_vec: Vec<&Box<dyn Word>> = options.into_values().collect();
+        opt_vec.shuffle(&mut rng);
+        opt_vec
     }
 
     pub fn exercise_select_de(&mut self, reader: &mut GameReader, results: &mut GameResults) -> Option<bool> {
@@ -205,12 +220,12 @@ impl Game {
         let word = self.db.words.get(&exercise_result.word).unwrap();
         let options = self.fetch_word_options(word);
 
-        println!("Select translation to deutsch: {} ({})", word.translation(), word.pos_str());
+        println!("Select translation to Deutsch: {} ({})", word.translation(), word.pos_str());
         for (i, &option) in options.iter().enumerate() {
             println!("{}) {}", i + 1, self.db.words[option.get_word()].spelling());
         }
         let select: usize = match reader.read_line()?.parse() {
-            Err(_) => return Some(false),
+            Err(_) => 0,
             Ok(v) => v
         };
 
