@@ -312,6 +312,44 @@ impl Game {
         exercise_result.add(result);
         Some(result)
     }
+
+    pub fn exercise_select_ru(
+        &mut self,
+        reader: &mut GameReader,
+        results: &mut GameResults,
+    ) -> Option<bool> {
+        let exercise_result = results.select_word_to_learn();
+        let word = self.db.words.get(&exercise_result.word).unwrap();
+        let options = self.fetch_word_options(word);
+
+        println!(
+            "Select translation to Russian: {} ({})",
+            word.spelling(),
+            word.pos_str()
+        );
+
+        let bullets: Vec<_> = options.iter().map(|w| w.translation().to_owned()).collect();
+        let result = match print_options_and_guess(&bullets, reader) {
+            UserInput::Answer(a) => options[a].get_word() == word.get_word(),
+            UserInput::InvalidAnswer => false,
+            UserInput::Exit => return None,
+        };
+
+        if result {
+            println!("{}", "Correct!".bold().green());
+            true
+        } else {
+            println!(
+                "{} The tranlation is {}",
+                "Incorrect!".bold().red(),
+                word.translation()
+            );
+            false
+        };
+        println!();
+        exercise_result.add(result);
+        Some(result)
+    }
 }
 
 fn print_options_and_guess(options: &[String], reader: &mut GameReader) -> UserInput {
