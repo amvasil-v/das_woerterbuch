@@ -130,9 +130,11 @@ impl GameResults {
         let mut indices = vec![];
         for (i, &weight) in self.weights.iter().enumerate() {
             let word = &self.results[i].word;
-            if db.words[word].get_pos() == pos {
-                weights.push(weight);
-                indices.push(i)
+            if let Some(w) = db.words.get(word) {
+                if w.get_pos() == pos {
+                    weights.push(weight);
+                    indices.push(i);
+                }
             }
         }
         let dist = WeightedIndex::new(weights).unwrap();
@@ -171,7 +173,12 @@ impl Game {
         results: &mut GameResults,
     ) -> Option<bool> {
         let exercise_result = results.select_word_to_learn();
-        let word = self.db.words.get(&exercise_result.word).unwrap().as_ref();
+        let word = match self.db.words.get(&exercise_result.word) {
+            Some(w) => w,
+            None => {
+                return Some(false);
+            }
+        };
         print!(
             "Translate to German: {} ({})",
             word.translation(),
@@ -246,7 +253,12 @@ impl Game {
         results: &mut GameResults,
     ) -> Option<bool> {
         let exercise_result = results.select_word_to_learn();
-        let word = self.db.words.get(&exercise_result.word).unwrap();
+        let word = match self.db.words.get(&exercise_result.word) {
+            Some(w) => w,
+            None => {
+                return Some(false);
+            }
+        };
         let options = self.fetch_word_options(word);
 
         println!(
@@ -292,7 +304,9 @@ impl Game {
         );
         let bullets: Vec<_> = NounArticle::iter().map(|a| a.to_answer_buller()).collect();
         let result = match print_options_and_guess(&bullets, reader) {
-            UserInput::Answer(a) => NounArticle::iter().nth(a).unwrap() == word.get_article().unwrap(),
+            UserInput::Answer(a) => {
+                NounArticle::iter().nth(a).unwrap() == word.get_article().unwrap()
+            }
             UserInput::InvalidAnswer => false,
             UserInput::Exit => return None,
         };
@@ -301,10 +315,7 @@ impl Game {
             print!("{}", "Correct! ".bold().green());
             true
         } else {
-            print!(
-                "{} The word is ",
-                "Incorrect!".bold().red()
-            );
+            print!("{} The word is ", "Incorrect!".bold().red());
             false
         };
         println!("{} - {}", word.spelling(), word.translation());
@@ -319,7 +330,12 @@ impl Game {
         results: &mut GameResults,
     ) -> Option<bool> {
         let exercise_result = results.select_word_to_learn();
-        let word = self.db.words.get(&exercise_result.word).unwrap();
+        let word = match self.db.words.get(&exercise_result.word) {
+            Some(w) => w,
+            None => {
+                return Some(false);
+            }
+        };
         let options = self.fetch_word_options(word);
 
         println!(
