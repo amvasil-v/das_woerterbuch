@@ -17,6 +17,7 @@ enum ExerciseType {
     TranslateRuDe,
     SelectRu,
     GuessNounArticle,
+    VerbFormRandom,
 }
 
 //const EXERCISE_TYPE: ExerciseType = ExerciseType::SelectRu;
@@ -30,7 +31,7 @@ fn main() {
     results.update_with_db(&db);
     results.update_weights();
     let mut game = Game::new(db);
-    //let exercise_types = [ExerciseType::GuessNounArticle];
+    //let exercise_types = [ExerciseType::VerbFormRandom];
     let exercise_types: Vec<_> = ExerciseType::iter().collect();
 
     println!("Type \"exit\" or press Ctrl-C to quit game");
@@ -46,6 +47,9 @@ fn main() {
                     game.guess_noun_article(&mut game_reader, &mut results)
                 }
                 ExerciseType::SelectRu => game.exercise_select_ru(&mut game_reader, &mut results),
+                ExerciseType::VerbFormRandom => {
+                    game.exercise_verb_form_random(&mut game_reader, &mut results)
+                }
             };
 
             if let None = result {

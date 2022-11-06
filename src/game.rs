@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::{cmp::Ordering, vec};
 use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 const ANSWER_OPTIONS: usize = 4;
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -60,6 +61,13 @@ impl Eq for ExerciseResults {}
 
 pub struct Game {
     db: Database,
+}
+
+#[derive(Debug, EnumIter)]
+enum VerbFormExercise {
+    PresentThird,
+    Praeteritum,
+    //Perfect
 }
 
 pub struct GameResults {
@@ -152,6 +160,28 @@ impl GameResults {
         return self.select_word_by_cmp(db, cmp, &pos);
     }
 
+    fn select_word_with_verb_form(
+        &mut self,
+        db: &Database,
+        form: &VerbFormExercise,
+    ) -> &mut ExerciseResults {
+        let cmp = |word: &dyn Word, form: &VerbFormExercise| {
+            if word.get_pos() != PartOfSpeech::Verb {
+                return false;
+            }
+            let opt = match form {
+                &VerbFormExercise::Praeteritum => word.get_verb_praeteritum(),
+                &VerbFormExercise::PresentThird => word.get_verb_present_third(),
+            };
+            match opt {
+                None => false,
+                Some(s) if s.is_empty() => false,
+                _ => true,
+            }
+        };
+        return self.select_word_by_cmp(db, cmp, form);
+    }
+
     pub fn update_weights(&mut self) {
         self.weights.clear();
         self.results.sort_unstable();
@@ -218,6 +248,63 @@ impl Game {
 
         exercise_result.add(res);
         Some(res)
+    }
+
+    fn exercise_verb_form(
+        &mut self,
+        reader: &mut GameReader,
+        results: &mut GameResults,
+        form: &VerbFormExercise,
+    ) -> Option<bool> {
+        let exercise_result = results.select_word_with_verb_form(&self.db, form);
+        let word = match self.db.words.get(&exercise_result.word) {
+            Some(w) => w,
+            None => {
+                return Some(false);
+            }
+        };
+        println!(
+            "{} [ {} - {} ]",
+            match form {
+                VerbFormExercise::PresentThird => "Add verb in present tense: Er ... jetzt",
+                VerbFormExercise::Praeteritum => "Add verb in Präteritum : Er ... einst",
+            },
+            word.get_word(),
+            word.translation()
+        );
+        let answer = match reader.read_line() {
+            None => return None,
+            Some(s) => s,
+        };
+
+        let correct = match form {
+            VerbFormExercise::PresentThird => word.get_verb_present_third().unwrap(),
+            VerbFormExercise::Praeteritum => word.get_verb_praeteritum().unwrap(),
+        };
+        let res = match form {
+            VerbFormExercise::PresentThird | VerbFormExercise::Praeteritum => {
+                check_spelling_simple(&answer, correct)
+            }
+        };
+        if res {
+            println!("{} {}", "Correct!".bold().green(), correct);
+        } else {
+            println!("{} The word is {}", "Incorrect!".bold().red(), correct);
+        }
+        println!();
+
+        exercise_result.add(res);
+        Some(res)
+    }
+
+    pub fn exercise_verb_form_random(
+        &mut self,
+        reader: &mut GameReader,
+        results: &mut GameResults,
+    ) -> Option<bool> {
+        let mut rng = rand::thread_rng();
+        let form = VerbFormExercise::iter().choose(&mut rng).unwrap();
+        self.exercise_verb_form(reader, results, &form)
     }
 
     fn fetch_word_options<'a>(&'a self, word: &'a Box<dyn Word>) -> Vec<&'a Box<dyn Word>> {
