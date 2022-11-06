@@ -124,14 +124,19 @@ impl GameResults {
         &mut self.results[dist.sample(&mut rng)]
     }
 
-    fn select_word_by_pos(&mut self, db: &Database, pos: PartOfSpeech) -> &mut ExerciseResults {
+    fn select_word_by_cmp<T>(
+        &mut self,
+        db: &Database,
+        cmp: impl Fn(&dyn Word, &T) -> bool,
+        prop: &T,
+    ) -> &mut ExerciseResults {
         let mut rng = rand::thread_rng();
         let mut weights = vec![];
         let mut indices = vec![];
         for (i, &weight) in self.weights.iter().enumerate() {
             let word = &self.results[i].word;
             if let Some(w) = db.words.get(word) {
-                if w.get_pos() == pos {
+                if cmp(w.as_ref(), prop) {
                     weights.push(weight);
                     indices.push(i);
                 }
@@ -140,6 +145,11 @@ impl GameResults {
         let dist = WeightedIndex::new(weights).unwrap();
         let idx = dist.sample(&mut rng);
         &mut self.results[indices[idx]]
+    }
+
+    fn select_word_by_pos(&mut self, db: &Database, pos: PartOfSpeech) -> &mut ExerciseResults {
+        let cmp = |word: &dyn Word, prop: &PartOfSpeech| &word.get_pos() == prop;
+        return self.select_word_by_cmp(db, cmp, &pos);
     }
 
     pub fn update_weights(&mut self) {

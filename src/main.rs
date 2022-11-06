@@ -30,41 +30,30 @@ fn main() {
     results.update_with_db(&db);
     results.update_weights();
     let mut game = Game::new(db);
-    let mut exercise_count = 0usize;
-    let mut exersise_type_iter = ExerciseType::iter();
-    let mut exercise_type = exersise_type_iter.next().unwrap();
+    //let exercise_types = [ExerciseType::GuessNounArticle];
+    let exercise_types: Vec<_> = ExerciseType::iter().collect();
 
     println!("Type \"exit\" or press Ctrl-C to quit game");
     println!();
-    loop {
-        exercise_count += 1;
-        if exercise_count >= EXERCISE_MAX_COUNT {
-            exercise_count = 0;
-            exercise_type = match exersise_type_iter.next() {
-                Some(t) => t,
-                None => {
-                    exersise_type_iter = ExerciseType::iter();
-                    exersise_type_iter.next().unwrap()
+    'outer: for exercise_type in exercise_types.iter().cycle() {
+        for _ in 0..EXERCISE_MAX_COUNT {
+            let result = match exercise_type {
+                ExerciseType::TranslateRuDe => {
+                    game.exercise_translate_to_de(&mut game_reader, &mut results)
                 }
+                ExerciseType::SelectDe => game.exercise_select_de(&mut game_reader, &mut results),
+                ExerciseType::GuessNounArticle => {
+                    game.guess_noun_article(&mut game_reader, &mut results)
+                }
+                ExerciseType::SelectRu => game.exercise_select_ru(&mut game_reader, &mut results),
             };
-        }
 
-        let result = match exercise_type {
-            ExerciseType::TranslateRuDe => {
-                game.exercise_translate_to_de(&mut game_reader, &mut results)
+            if let None = result {
+                break 'outer;
             }
-            ExerciseType::SelectDe => game.exercise_select_de(&mut game_reader, &mut results),
-            ExerciseType::GuessNounArticle => {
-                game.guess_noun_article(&mut game_reader, &mut results)
-            }
-            ExerciseType::SelectRu => game.exercise_select_ru(&mut game_reader, &mut results),
-        };
 
-        if let None = result {
-            break;
+            results.update_weights();
         }
-
-        results.update_weights();
     }
     results.save_results();
     println!("Top words to learn are {:?}", results.get_top_words(5));
