@@ -67,7 +67,7 @@ pub struct Game {
 enum VerbFormExercise {
     PresentThird,
     Praeteritum,
-    //Perfect
+    Perfect,
 }
 
 pub struct GameResults {
@@ -172,6 +172,12 @@ impl GameResults {
             let opt = match form {
                 &VerbFormExercise::Praeteritum => word.get_verb_praeteritum(),
                 &VerbFormExercise::PresentThird => word.get_verb_present_third(),
+                &VerbFormExercise::Perfect => {
+                    if let None = word.get_verb_perfect_verb() {
+                        return false;
+                    }
+                    word.get_verb_perfect()
+                }
             };
             match opt {
                 None => false,
@@ -268,6 +274,7 @@ impl Game {
             match form {
                 VerbFormExercise::PresentThird => "Add verb in present tense: Er ... jetzt",
                 VerbFormExercise::Praeteritum => "Add verb in Präteritum : Er ... einst",
+                VerbFormExercise::Perfect => "Add verb in Perfekt : Er ... ... gestern"
             },
             word.get_word(),
             word.translation()
@@ -278,13 +285,15 @@ impl Game {
         };
 
         let correct = match form {
-            VerbFormExercise::PresentThird => word.get_verb_present_third().unwrap(),
-            VerbFormExercise::Praeteritum => word.get_verb_praeteritum().unwrap(),
+            VerbFormExercise::PresentThird => word.get_verb_present_third().unwrap().to_owned(),
+            VerbFormExercise::Praeteritum => word.get_verb_praeteritum().unwrap().to_owned(),
+            VerbFormExercise::Perfect => word.get_verb_perfect_full().unwrap()
         };
         let res = match form {
             VerbFormExercise::PresentThird | VerbFormExercise::Praeteritum => {
-                check_spelling_simple(&answer, correct)
-            }
+                check_spelling_simple(&answer, &correct)
+            },
+            VerbFormExercise::Perfect => check_spelling_perfect(&answer, word.as_ref())
         };
         if res {
             println!("{} {}", "Correct!".bold().green(), correct);

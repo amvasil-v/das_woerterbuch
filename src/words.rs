@@ -30,6 +30,29 @@ pub fn check_spelling_simple(answer: &str, expected: &str) -> bool {
     }
 }
 
+pub fn check_spelling_perfect(answer: &str, expected: &dyn Word) -> bool {
+    let mut frags = answer.split_whitespace();
+    let first = match frags.next() {
+        None => {
+            return false;
+        }
+        Some(s) => s,
+    };
+    let second = match frags.next() {
+        None => {
+            return false;
+        }
+        Some(s) => s,
+    };
+    if first != "hat" && first != "ist" {
+        return false;
+    }
+    if !expected.get_verb_perfect_verb().unwrap().to_string().contains(first) {
+        return false;
+    }
+    check_spelling_simple(second, expected.get_verb_perfect().unwrap())
+}
+
 pub trait Word {
     fn pos_str(&self) -> &'static str {
         unimplemented!()
@@ -69,7 +92,11 @@ pub trait Word {
         None
     }
 
-    fn get_verb_perfect_verb(&self) -> Option<&str> {
+    fn get_verb_perfect_verb(&self) -> Option<&PerfectVerb> {
+        None
+    }
+
+    fn get_verb_perfect_full(&self) -> Option<String> {
         None
     }
 
@@ -245,6 +272,15 @@ impl PerfectVerb {
     pub fn from_option(s: Option<String>) -> Option<Self> {
         Self::from(&s?)
     }
+
+    pub fn to_string(&self) -> String {
+        match &self {
+            Self::Haben => "hat",
+            Self::Sein => "ist",
+            Self::Both => "hat/ist",
+        }
+        .to_owned()
+    }
 }
 
 #[derive(Debug)]
@@ -297,6 +333,22 @@ impl Word for Verb {
 
     fn get_verb_present_third(&self) -> Option<&str> {
         Some(&self.present_third)
+    }
+
+    fn get_verb_perfect_verb(&self) -> Option<&PerfectVerb> {
+        self.perfect_verb.as_ref()
+    }
+
+    fn get_verb_perfect(&self) -> Option<&str> {
+        Some(&self.perfect)
+    }
+
+    fn get_verb_perfect_full(&self) -> Option<String> {
+        Some(format!(
+            "{} {}",
+            self.get_verb_perfect_verb()?.to_string(),
+            self.get_verb_perfect()?
+        ))
     }
 }
 
