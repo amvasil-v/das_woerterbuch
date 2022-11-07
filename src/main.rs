@@ -20,8 +20,44 @@ enum ExerciseType {
     VerbFormRandom,
 }
 
+impl ExerciseType {
+    pub fn to_string(&self) -> &'static str {
+        match &self {
+            ExerciseType::SelectDe => "1) Select correct word in Deutsch",
+            ExerciseType::TranslateRuDe => "2) Type in word in Deutsch",
+            ExerciseType::SelectRu => "3) Select correct translation to Russian",
+            ExerciseType::GuessNounArticle => "4) Select correct noun atricle",
+            ExerciseType::VerbFormRandom => "5) Type in correct verb form",
+        }
+    }
+}
+
 //const EXERCISE_TYPE: ExerciseType = ExerciseType::SelectRu;
 const EXERCISE_MAX_COUNT: usize = 10;
+
+fn select_excercise_mode(reader: &mut GameReader) -> Vec<ExerciseType> {
+    println!("Select exercise mode:");
+    println!("0) All exercises in series");
+    for ex in ExerciseType::iter() {
+        println!("{}", ex.to_string())
+    }
+    println!("other) Quit game");
+    let select: usize = match reader.read_line() {
+        None => {return vec![]},
+        Some(s) => match s.parse() {
+            Err(_) => {return vec![]},
+            Ok(n) => n 
+        }
+    };
+    if select == 0 {
+        ExerciseType::iter().collect()
+    } else {
+        match ExerciseType::iter().nth(select - 1) {
+            Some(ex) => vec![ex],
+            None => {return vec![]}
+        }
+    }
+}
 
 fn main() {
     let db = fill_database("woerterbuch.xlsx");
@@ -31,8 +67,12 @@ fn main() {
     results.update_with_db(&db);
     results.update_weights();
     let mut game = Game::new(db);
-    //let exercise_types = [ExerciseType::VerbFormRandom];
-    let exercise_types: Vec<_> = ExerciseType::iter().collect();
+    
+    let exercise_types = select_excercise_mode(&mut game_reader);
+    if exercise_types.is_empty() {
+        println!("Quit game");
+        return;
+    }
 
     println!("Type \"exit\" or press Ctrl-C to quit game");
     println!();
