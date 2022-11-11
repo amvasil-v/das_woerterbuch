@@ -47,7 +47,12 @@ pub fn check_spelling_perfect(answer: &str, expected: &dyn Word) -> bool {
     if first != "hat" && first != "ist" {
         return false;
     }
-    if !expected.get_verb_perfect_verb().unwrap().to_string().contains(first) {
+    if !expected
+        .get_verb_perfect_verb()
+        .unwrap()
+        .to_string()
+        .contains(first)
+    {
         return false;
     }
     check_spelling_simple(second, expected.get_verb_perfect().unwrap())
@@ -197,7 +202,8 @@ fn get_article(s: &str) -> Result<NounArticle, String> {
 }
 
 pub fn capitalize_noun(noun: &str) -> String {
-    noun[0..1].to_uppercase().to_string() + &noun[1..]
+    noun.chars().next().unwrap().to_uppercase().to_string()
+        + &noun.chars().skip(1).collect::<String>()
 }
 
 #[derive(Debug)]

@@ -32,7 +32,6 @@ impl ExerciseType {
     }
 }
 
-//const EXERCISE_TYPE: ExerciseType = ExerciseType::SelectRu;
 const EXERCISE_MAX_COUNT: usize = 10;
 
 fn select_excercise_mode(reader: &mut GameReader) -> Vec<ExerciseType> {
@@ -43,18 +42,18 @@ fn select_excercise_mode(reader: &mut GameReader) -> Vec<ExerciseType> {
     }
     println!("other) Quit game");
     let select: usize = match reader.read_line() {
-        None => {return vec![]},
+        None => return vec![],
         Some(s) => match s.parse() {
-            Err(_) => {return vec![]},
-            Ok(n) => n 
-        }
+            Err(_) => return vec![],
+            Ok(n) => n,
+        },
     };
     if select == 0 {
         ExerciseType::iter().collect()
     } else {
         match ExerciseType::iter().nth(select - 1) {
             Some(ex) => vec![ex],
-            None => {return vec![]}
+            None => return vec![],
         }
     }
 }
@@ -67,7 +66,7 @@ fn main() {
     results.update_with_db(&db);
     results.update_weights();
     let mut game = Game::new(db);
-    
+
     let exercise_types = select_excercise_mode(&mut game_reader);
     if exercise_types.is_empty() {
         println!("Quit game");
