@@ -475,19 +475,48 @@ impl Exercise {
             }
         };
 
-        let result = match ex_type {
-            ExerciseType::TranslateRuDe => self.exercise_translate_to_de(reader, word),
-            ExerciseType::SelectDe => self.exercise_select_de(reader, word),
-            ExerciseType::GuessNounArticle => self.guess_noun_article(reader, word),
-            ExerciseType::SelectRu => self.exercise_select_ru(reader, word),
-            ExerciseType::VerbFormRandom => self.exercise_verb_form_random(reader, word),
-        }?;
+        let result = self.exercise_with_type(reader, word, ex_type)?;
 
         exercise_result.add(result);
         if !result {
             results.training.push(word.get_word().to_owned());
         }
         Some(result)
+    }
+
+    pub fn exercise_with_type(
+        &self,
+        reader: &mut GameReader,
+        word: &Box<dyn Word>,
+        ex_type: &ExerciseType,
+    ) -> Option<bool> {
+        match ex_type {
+            ExerciseType::TranslateRuDe => self.exercise_translate_to_de(reader, word),
+            ExerciseType::SelectDe => self.exercise_select_de(reader, word),
+            ExerciseType::GuessNounArticle => self.guess_noun_article(reader, word),
+            ExerciseType::SelectRu => self.exercise_select_ru(reader, word),
+            ExerciseType::VerbFormRandom => self.exercise_verb_form_random(reader, word),
+        }
+    }
+
+    pub fn exercise_with_random_type(
+        &self,
+        reader: &mut GameReader,
+        word: &Box<dyn Word>
+    ) -> Option<bool> {
+        let mut rng = rand::thread_rng();
+        let ex_type_prelim = ExerciseType::iter().choose(&mut rng).unwrap();
+        let ex_type = match (ex_type_prelim, word.get_pos()) {
+            (ExerciseType::VerbFormRandom, _) => ExerciseType::TranslateRuDe,
+            (ExerciseType::GuessNounArticle, PartOfSpeech::Noun) => ExerciseType::GuessNounArticle,
+            (ExerciseType::GuessNounArticle, _) => ExerciseType::TranslateRuDe,
+            (t, _) => t
+        };        
+        self.exercise_with_type(reader, word, &ex_type)
+    }
+
+    pub fn get_word_from_database(&self, word: &str) -> &Box<dyn Word> {
+        self.db.words.get(word).unwrap()
     }
 }
 
