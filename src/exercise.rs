@@ -59,7 +59,7 @@ impl PartialEq for ExerciseResults {
 
 impl Eq for ExerciseResults {}
 
-pub struct Game {
+pub struct Exercise {
     db: Database,
 }
 
@@ -208,9 +208,9 @@ enum UserInput {
     Exit,
 }
 
-impl Game {
+impl Exercise {
     pub fn new(db: Database) -> Self {
-        Game { db }
+        Exercise { db }
     }
 
     pub fn exercise_translate_to_de(

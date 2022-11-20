@@ -1,5 +1,5 @@
 mod dictionary;
-mod game;
+mod exercise;
 mod game_reader;
 mod words;
 
@@ -7,7 +7,7 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::dictionary::*;
-use crate::game::*;
+use crate::exercise::*;
 use crate::game_reader::GameReader;
 
 #[allow(unused)]
@@ -65,7 +65,7 @@ fn main() {
     results.load_results("exercises.bin");
     results.update_with_db(&db);
     results.update_weights();
-    let mut game = Game::new(db);
+    let mut game = Exercise::new(db);
 
     let exercise_types = select_excercise_mode(&mut game_reader);
     if exercise_types.is_empty() {
