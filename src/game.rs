@@ -1,18 +1,6 @@
-use strum_macros::EnumIter;
-
 use crate::exercise::*;
 use crate::game_reader::GameReader;
 use crate::words::Database;
-
-#[allow(unused)]
-#[derive(EnumIter)]
-pub enum ExerciseType {
-    SelectDe,
-    TranslateRuDe,
-    SelectRu,
-    GuessNounArticle,
-    VerbFormRandom,
-}
 
 impl ExerciseType {
     pub fn to_string(&self) -> &'static str {
@@ -36,25 +24,13 @@ pub fn play_game(
     results.load_results("exercises.bin");
     results.update_with_db(&db);
     results.update_weights();
-    let mut game = Exercise::new(db);
+    let ex = Exercise::new(db);
 
     println!("Type \"exit\" or press Ctrl-C to quit game");
     println!();
     'outer: for exercise_type in exercise_types.iter().cycle() {
         for _ in 0..exercise_max_cnt {
-            let result = match exercise_type {
-                ExerciseType::TranslateRuDe => {
-                    game.exercise_translate_to_de(&mut game_reader, &mut results)
-                }
-                ExerciseType::SelectDe => game.exercise_select_de(&mut game_reader, &mut results),
-                ExerciseType::GuessNounArticle => {
-                    game.guess_noun_article(&mut game_reader, &mut results)
-                }
-                ExerciseType::SelectRu => game.exercise_select_ru(&mut game_reader, &mut results),
-                ExerciseType::VerbFormRandom => {
-                    game.exercise_verb_form_random(&mut game_reader, &mut results)
-                }
-            };
+            let result = ex.exercise(&mut game_reader, &mut results, exercise_type);
 
             if let None = result {
                 break 'outer;
@@ -62,6 +38,8 @@ pub fn play_game(
 
             results.update_weights();
         }
+
+        println!("Words to repeat are: {:?}", results.get_training_words());
     }
     results.save_results();
     println!("Top words to learn are {:?}", results.get_top_words(5));

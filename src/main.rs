@@ -5,6 +5,7 @@ mod game_reader;
 mod words;
 
 use crate::dictionary::*;
+use crate::exercise::ExerciseType;
 use crate::game::*;
 use crate::game_reader::GameReader;
 use strum::IntoEnumIterator;
