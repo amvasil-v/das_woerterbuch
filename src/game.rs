@@ -47,11 +47,6 @@ pub fn play_game(
     println!("Top words to learn are {:?}", results.get_top_words(5));
 }
 
-enum RepeatAttempt {
-    First,
-    Second,
-}
-
 fn repeat_words(words: &Vec<String>, reader: &mut GameReader, exercise: &Exercise) -> Option<()> {
     if words.is_empty() {
         println!("Congratulations, all answers are correct!");
@@ -61,22 +56,23 @@ fn repeat_words(words: &Vec<String>, reader: &mut GameReader, exercise: &Exercis
     println!();
     let mut repeat: Vec<_> = words
         .iter()
-        .map(|w| (exercise.get_word_from_database(w), RepeatAttempt::First))
+        .map(|w| {
+            let word_ref = exercise.get_word_from_database(w);
+            (word_ref, exercise.get_random_exercise_type(word_ref))
+        })
         .collect();
     let mut rng = rand::thread_rng();
 
     while !repeat.is_empty() {
         let elem = repeat.remove(rng.gen_range(0..repeat.len()));
-        let result = match elem {
-            (w, RepeatAttempt::First) => exercise.exercise_with_random_type(reader, w),
-            (w, _) => exercise.exercise_with_type(reader, w, &ExerciseType::TranslateRuDe),
-        }?;
+        let result = exercise.exercise_with_type(reader, elem.0, &elem.1)?;
         if result {
-            if let RepeatAttempt::First = elem.1 {
-                repeat.push((elem.0, RepeatAttempt::Second));
+            match elem.1 {
+                ExerciseType::TranslateRuDe => continue,
+                _ => repeat.push((elem.0, ExerciseType::TranslateRuDe))
             }
         } else {
-            repeat.push((elem.0, RepeatAttempt::Second));
+            repeat.push((elem.0, ExerciseType::TranslateRuDe));
         }
     }
     println!("All words repeated!");
