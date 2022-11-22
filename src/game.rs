@@ -16,6 +16,22 @@ impl ExerciseType {
     }
 }
 
+fn play_game_round(
+    exercise_max_cnt: usize,
+    exercise: &Exercise,
+    exercise_types: &Vec<ExerciseType>,
+    game_reader: &mut GameReader,
+    results: &mut GameResults,
+) -> Option<()> {
+    for exercise_type in exercise_types {
+        for _ in 0..exercise_max_cnt {
+            exercise.exercise(game_reader, results, exercise_type)?;
+            results.update_weights();
+        }
+    }
+    repeat_words(results.get_training_words(), game_reader, &exercise)
+}
+
 pub fn play_game(
     exercise_max_cnt: usize,
     db: Database,
@@ -30,18 +46,16 @@ pub fn play_game(
 
     println!("Type \"exit\" or press Ctrl-C to quit game");
     println!();
-    'outer: for exercise_type in exercise_types.iter().cycle() {
-        for _ in 0..exercise_max_cnt {
-            let result = ex.exercise(&mut game_reader, &mut results, exercise_type);
-
-            if let None = result {
-                break 'outer;
-            }
-
-            results.update_weights();
+    loop {
+        if let None = play_game_round(
+            exercise_max_cnt,
+            &ex,
+            &exercise_types,
+            &mut game_reader,
+            &mut results,
+        ) {
+            break;
         }
-
-        repeat_words(results.get_training_words(), &mut game_reader, &ex);
     }
     results.save_results();
     println!("Top words to learn are {:?}", results.get_top_words(5));
@@ -68,8 +82,8 @@ fn repeat_words(words: &Vec<String>, reader: &mut GameReader, exercise: &Exercis
         let result = exercise.exercise_with_type(reader, elem.0, &elem.1)?;
         if result {
             match elem.1 {
-                ExerciseType::TranslateRuDe => continue,
-                _ => repeat.push((elem.0, ExerciseType::TranslateRuDe))
+                ExerciseType::TranslateRuDe | ExerciseType::VerbFormRandom => continue,
+                _ => repeat.push((elem.0, ExerciseType::TranslateRuDe)),
             }
         } else {
             repeat.push((elem.0, ExerciseType::TranslateRuDe));
