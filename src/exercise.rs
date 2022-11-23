@@ -514,7 +514,9 @@ impl Exercise {
 
     pub fn get_random_exercise_type(&self, word: &Box<dyn Word>) -> ExerciseType {
         if let PartOfSpeech::Verb = word.get_pos() {
-            return ExerciseType::VerbFormRandom;
+            if word.get_verb_praeteritum().is_some() {
+                return ExerciseType::VerbFormRandom;
+            }            
         }
         let mut rng = rand::thread_rng();
         let ex_type_prelim = ExerciseType::iter().choose(&mut rng).unwrap();
