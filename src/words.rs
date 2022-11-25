@@ -334,10 +334,16 @@ impl Word for Verb {
     }
 
     fn get_verb_praeteritum(&self) -> Option<&str> {
+        if self.praeteritum.is_empty() {
+            return None;
+        }
         Some(&self.praeteritum)
     }
 
     fn get_verb_present_third(&self) -> Option<&str> {
+        if self.present_third.is_empty() {
+            return None;
+        }
         Some(&self.present_third)
     }
 
@@ -346,6 +352,9 @@ impl Word for Verb {
     }
 
     fn get_verb_perfect(&self) -> Option<&str> {
+        if self.perfect.is_empty() {
+            return None;
+        }
         Some(&self.perfect)
     }
 
