@@ -66,7 +66,7 @@ fn repeat_words(words: &Vec<String>, reader: &mut GameReader, exercise: &Exercis
         println!("Congratulations, all answers are correct!");
         return Some(());
     }
-    println!("Words to repeat are: {:?}", words);
+    println!("There are {} words to repeat", words.len());
     println!();
     let mut repeat: Vec<_> = words
         .iter()
