@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use strum_macros::EnumIter;
 
@@ -12,10 +12,10 @@ pub enum PartOfSpeech {
 }
 
 fn umlaut_normalize(word: &str) -> String {
-    word.replace("ü", "ue")
-        .replace("ä", "ae")
-        .replace("ö", "oe")
-        .replace("ß", "ss")
+    word.replace('ü', "ue")
+        .replace('ä', "ae")
+        .replace('ö', "oe")
+        .replace('ß', "ss")
 }
 
 pub fn check_spelling_simple(answer: &str, expected: &str) -> bool {
@@ -23,10 +23,8 @@ pub fn check_spelling_simple(answer: &str, expected: &str) -> bool {
     let spelling = expected.to_lowercase();
     if low_ans == spelling {
         true
-    } else if low_ans == umlaut_normalize(&spelling) {
-        true
     } else {
-        false
+        low_ans == umlaut_normalize(&spelling)
     }
 }
 
@@ -119,21 +117,23 @@ pub enum NounArticle {
 }
 
 impl NounArticle {
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::Der => "der",
-            Self::Die => "die",
-            Self::Das => "das",
-            Self::Plural => "die",
-        }
-        .to_owned()
-    }
-
-    pub fn to_answer_buller(&self) -> String {
+    pub fn answer_bullet_str(&self) -> String {
         match self {
             Self::Plural => "die (plural)".to_string(),
             _ => self.to_string(),
         }
+    }
+}
+
+impl Display for NounArticle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Der => "der",
+            Self::Die => "die",
+            Self::Das => "das",
+            Self::Plural => "die",
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -157,7 +157,7 @@ const PERFECT_VERB_IDX: usize = 8;
 const PRESENT_THIRD_IDX: usize = 9;
 
 pub fn get_part_of_speech(map: &HashMap<usize, String>) -> &str {
-    return &map[&POS_IDX];
+    &map[&POS_IDX]
 }
 
 impl Word for WordCommon {
@@ -249,7 +249,7 @@ impl Word for Noun {
     }
 
     fn get_article(&self) -> Option<NounArticle> {
-        Some(self.article.clone())
+        Some(self.article)
     }
 }
 
@@ -278,14 +278,16 @@ impl PerfectVerb {
     pub fn from_option(s: Option<String>) -> Option<Self> {
         Self::from(&s?)
     }
+}
 
-    pub fn to_string(&self) -> String {
-        match &self {
+impl Display for PerfectVerb {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
             Self::Haben => "hat",
             Self::Sein => "ist",
             Self::Both => "hat/ist",
-        }
-        .to_owned()
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -361,7 +363,7 @@ impl Word for Verb {
     fn get_verb_perfect_full(&self) -> Option<String> {
         Some(format!(
             "{} {}",
-            self.get_verb_perfect_verb()?.to_string(),
+            self.get_verb_perfect_verb()?,
             self.get_verb_perfect()?
         ))
     }

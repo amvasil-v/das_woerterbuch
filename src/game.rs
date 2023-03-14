@@ -29,7 +29,7 @@ fn play_game_round(
             results.update_weights();
         }
     }
-    repeat_words(results.get_training_words(), game_reader, &exercise)
+    repeat_words(results.get_training_words(), game_reader, exercise)
 }
 
 pub fn play_game(
@@ -47,13 +47,15 @@ pub fn play_game(
     println!("Type \"exit\" or press Ctrl-C to quit game");
     println!();
     loop {
-        if let None = play_game_round(
+        if play_game_round(
             exercise_max_cnt,
             &ex,
             &exercise_types,
             &mut game_reader,
             &mut results,
-        ) {
+        )
+        .is_none()
+        {
             break;
         }
     }

@@ -31,7 +31,7 @@ fn select_excercise_mode(reader: &mut GameReader) -> Vec<ExerciseType> {
     } else {
         match ExerciseType::iter().nth(select - 1) {
             Some(ex) => vec![ex],
-            None => return vec![],
+            None => vec![],
         }
     }
 }

@@ -15,9 +15,7 @@ pub fn fill_database(filename: &str) -> Database {
         let mut map: HashMap<usize, String> =
             row.iter().map(|dt| dt.to_string()).enumerate().collect();
         let pos = get_part_of_speech(&map);
-        let word;
-
-        word = match pos {
+        let word = match pos {
             "n" => Box::new(Noun::new(&mut map, &mut db)) as Box<dyn Word>,
             "v" => Box::new(Verb::new(&mut map, &mut db)),
             "adj" => Box::new(Adjective::new(&mut map, &mut db)),

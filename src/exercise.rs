@@ -1,5 +1,4 @@
 use crate::{game_reader::GameReader, words::*};
-use bincode;
 use colored::Colorize;
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
@@ -185,11 +184,11 @@ impl GameResults {
             if word.get_pos() != PartOfSpeech::Verb {
                 return false;
             }
-            let opt = match form {
-                &VerbFormExercise::Praeteritum => word.get_verb_praeteritum(),
-                &VerbFormExercise::PresentThird => word.get_verb_present_third(),
-                &VerbFormExercise::Perfect => {
-                    if let None = word.get_verb_perfect_verb() {
+            let opt = match *form {
+                VerbFormExercise::Praeteritum => word.get_verb_praeteritum(),
+                VerbFormExercise::PresentThird => word.get_verb_present_third(),
+                VerbFormExercise::Perfect => {
+                    if word.get_verb_perfect_verb().is_none() {
                         return false;
                     }
                     word.get_verb_perfect()
@@ -232,7 +231,7 @@ impl Exercise {
     pub fn exercise_translate_to_de(
         &self,
         reader: &mut GameReader,
-        word: &Box<dyn Word>,
+        word: &dyn Word,
     ) -> Option<bool> {
         print!(
             "Translate to German: {} ({})",
@@ -266,7 +265,7 @@ impl Exercise {
     fn exercise_verb_form(
         &self,
         reader: &mut GameReader,
-        word: &Box<dyn Word>,
+        word: &dyn Word,
         form: &VerbFormExercise,
     ) -> Option<bool> {
         println!(
@@ -293,7 +292,7 @@ impl Exercise {
             VerbFormExercise::PresentThird | VerbFormExercise::Praeteritum => {
                 check_spelling_simple(&answer, &correct)
             }
-            VerbFormExercise::Perfect => check_spelling_perfect(&answer, word.as_ref()),
+            VerbFormExercise::Perfect => check_spelling_perfect(&answer, word),
         };
         if res {
             println!("{} {}", "Correct!".bold().green(), correct);
@@ -307,14 +306,14 @@ impl Exercise {
     pub fn exercise_verb_form_random(
         &self,
         reader: &mut GameReader,
-        word: &Box<dyn Word>,
+        word: &dyn Word,
     ) -> Option<bool> {
         let mut rng = rand::thread_rng();
         let form = VerbFormExercise::iter().choose(&mut rng).unwrap();
         self.exercise_verb_form(reader, word, &form)
     }
 
-    fn fetch_word_options<'a>(&'a self, word: &'a Box<dyn Word>) -> Vec<&'a Box<dyn Word>> {
+    fn fetch_word_options<'a>(&'a self, word: &'a dyn Word) -> Vec<&'a dyn Word> {
         let group_id = word.get_group_id();
         let pos = word.get_pos();
         let mut rng = rand::thread_rng();
@@ -337,8 +336,8 @@ impl Exercise {
         const MAX_ATTEMPTS: usize = 1000;
         let mut attempts = 0usize;
         while options.len() < ANSWER_OPTIONS.min(candidates.len()) {
-            let cand = *candidates.choose(&mut rng).unwrap();
-            if let Some(_) = options.insert(cand.get_word(), cand) {
+            let cand = &***candidates.choose(&mut rng).unwrap();
+            if options.insert(cand.get_word(), cand).is_some() {
                 attempts += 1;
                 if attempts >= MAX_ATTEMPTS {
                     panic!("Cannot choose answer options");
@@ -346,16 +345,12 @@ impl Exercise {
             }
         }
 
-        let mut opt_vec: Vec<&Box<dyn Word>> = options.into_values().collect();
+        let mut opt_vec: Vec<&dyn Word> = options.into_values().collect();
         opt_vec.shuffle(&mut rng);
         opt_vec
     }
 
-    pub fn exercise_select_de(
-        &self,
-        reader: &mut GameReader,
-        word: &Box<dyn Word>,
-    ) -> Option<bool> {
+    pub fn exercise_select_de(&self, reader: &mut GameReader, word: &dyn Word) -> Option<bool> {
         let options = self.fetch_word_options(word);
 
         println!(
@@ -386,16 +381,12 @@ impl Exercise {
         Some(result)
     }
 
-    pub fn guess_noun_article(
-        &self,
-        reader: &mut GameReader,
-        word: &Box<dyn Word>,
-    ) -> Option<bool> {
+    pub fn guess_noun_article(&self, reader: &mut GameReader, word: &dyn Word) -> Option<bool> {
         println!(
             "Select the correct article for the noun: {}",
             capitalize_noun(word.get_word())
         );
-        let bullets: Vec<_> = NounArticle::iter().map(|a| a.to_answer_buller()).collect();
+        let bullets: Vec<_> = NounArticle::iter().map(|a| a.answer_bullet_str()).collect();
         let result = match print_options_and_guess(&bullets, reader) {
             UserInput::Answer(a) => {
                 NounArticle::iter().nth(a).unwrap() == word.get_article().unwrap()
@@ -416,11 +407,7 @@ impl Exercise {
         Some(result)
     }
 
-    pub fn exercise_select_ru(
-        &self,
-        reader: &mut GameReader,
-        word: &Box<dyn Word>,
-    ) -> Option<bool> {
+    pub fn exercise_select_ru(&self, reader: &mut GameReader, word: &dyn Word) -> Option<bool> {
         let options = self.fetch_word_options(word);
 
         println!(
@@ -469,7 +456,7 @@ impl Exercise {
             _ => results.select_word_to_learn(),
         };
         let word = match self.db.words.get(&exercise_result.word) {
-            Some(w) => w,
+            Some(w) => &**w,
             None => {
                 return Some(false);
             }
@@ -487,7 +474,7 @@ impl Exercise {
     pub fn exercise_with_type(
         &self,
         reader: &mut GameReader,
-        word: &Box<dyn Word>,
+        word: &dyn Word,
         ex_type: &ExerciseType,
     ) -> Option<bool> {
         match ex_type {
@@ -503,20 +490,20 @@ impl Exercise {
     pub fn exercise_with_random_type(
         &self,
         reader: &mut GameReader,
-        word: &Box<dyn Word>,
+        word: &dyn Word,
     ) -> Option<bool> {
         self.exercise_with_type(reader, word, &self.get_random_exercise_type(word))
     }
 
-    pub fn get_word_from_database(&self, word: &str) -> &Box<dyn Word> {
-        self.db.words.get(word).unwrap()
+    pub fn get_word_from_database(&self, word: &str) -> &dyn Word {
+        self.db.words.get(word).unwrap().as_ref()
     }
 
-    pub fn get_random_exercise_type(&self, word: &Box<dyn Word>) -> ExerciseType {
+    pub fn get_random_exercise_type(&self, word: &dyn Word) -> ExerciseType {
         if let PartOfSpeech::Verb = word.get_pos() {
             if word.get_verb_praeteritum().is_some() {
                 return ExerciseType::VerbFormRandom;
-            }            
+            }
         }
         let mut rng = rand::thread_rng();
         let ex_type_prelim = ExerciseType::iter().choose(&mut rng).unwrap();
